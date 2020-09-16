@@ -5,3 +5,7 @@
 .vscode/ipch
 .vscode/extensions.json
 .vscode/settings.json
+html/build
+html/node_modules
+html/package-lock.json
+html/dist
