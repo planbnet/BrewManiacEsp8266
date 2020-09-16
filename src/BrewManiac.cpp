@@ -15,6 +15,8 @@
 #include <PID_v1.h>
 
 #include "config.h"
+#include "ps.h"
+
 #include "pins.h"
 #include "automation.h"
 
@@ -342,7 +344,6 @@ void setEventMask(byte mask)
 #include "resources.h"
 #include "ui.h"
 
-#include "ps.h"
 #include "wi.h"
 
 // *************************
@@ -480,7 +481,7 @@ void btnInitialize(void)
 #define BUTTON_DEBUG false
 #endif
 
-#define BUTTON_DEBUG false
+//#define BUTTON_DEBUG true
 
 
 boolean _virtualButtonPressed=false;
@@ -734,7 +735,22 @@ void printSensorAddress(char *buf, byte *addr)
 	buf[16]=0;
 }
 
-
+#if FakeHeating
+byte FakeSensors[][8]={
+{0x28,0xFF,0x2B,0x00,0x00,0x00,0x01,0x9e},
+{0x28,0xFF,0x2B,0x00,0x00,0x00,0x02,0x7c},
+{0x28,0xFF,0x2B,0x00,0x00,0x00,0x03,0x22},
+{0x28,0xFF,0x2B,0x00,0x00,0x00,0x04,0xa1}
+};
+byte scanSensors(byte max,byte addresses[][8]) {
+//	byte i;
+	for(int i=0;i<4;i++){
+		memcpy(addresses[i],FakeSensors[i],8);
+		gTemperatureReading[i]= gIsUseFahrenheit? 67.8:19.9;
+	}
+	return 4;
+}
+#else
 byte scanSensors(byte max,byte addresses[][8]) {
 //	byte i;
   	byte m=0;
@@ -769,6 +785,7 @@ byte scanSensors(byte max,byte addresses[][8]) {
 
 	return m;
 }
+#endif
 
 void loadSensorSetting(void)
 {
@@ -797,6 +814,7 @@ void loadSensorSetting(void)
 
     	if (gSensorAddresses[i][0] != 0x28
  	   	 		|| OneWire::crc8( gSensorAddresses[i], 7) != gSensorAddresses[i][7]) {
+			DBG_PRINTF("invalid sensor address! %x",OneWire::crc8( gSensorAddresses[i], 7));
 			break;
     	}
 
@@ -809,7 +827,7 @@ void loadSensorSetting(void)
 	gAuxSensorIndex =(gSensorNumber>1)? 1:0;
 
 #if SerialDebug == true
-		Serial.printf("Number of sensors:%d",gSensorNumber);
+		Serial.printf("Number of sensors:%d\n",gSensorNumber);
 #endif
 
 }
@@ -874,10 +892,7 @@ void tpInitialize(void)
 
 #if	MaximumNumberOfSensors	> 1
 
-	loadSensorSetting();
-
 	for(byte i=0;i< MaximumNumberOfSensors;i++){
-		_gIsSensorConverting[i]=false;
 		gTemperatureReading[i]= gIsUseFahrenheit? 67.8:19.9;
 	}
 #endif
@@ -1030,6 +1045,12 @@ uint32_t _lastValidTempRead[MaximumNumberOfSensors];
 void tpReadTemperature(void)
 {
 #if FakeHeating
+
+#if  MaximumNumberOfSensors > 1
+	for(int i=0;i<MaximumNumberOfSensors;i++){
+		if(gTemperatureReading[i]<0) gTemperatureReading[i] =0;
+	}
+#endif
 	return;
 #endif
 
@@ -1416,19 +1437,20 @@ public:
 
 class PumpControl: public RestableDevice
 {
+	bool _inverted;
     public:
     PumpControl(){}
 
     void virtual deviceOn(void)
     {
-	    setPumpOut(HIGH);
+	    setPumpOut(_inverted? LOW:HIGH);
 	    uiPumpStatus(PumpStatus_On);
 	    wiReportPump(PumpStatus_On);
     }
 
     void virtual deviceOff(bool programOff)
     {
-        setPumpOut(LOW);
+        setPumpOut(_inverted? HIGH:LOW);
 	    if(programOff){
 		    uiPumpStatus(PumpStatus_On_PROGRAM_OFF);
 		    wiReportPump(PumpStatus_On_PROGRAM_OFF);
@@ -1441,6 +1463,7 @@ class PumpControl: public RestableDevice
     {
 	    setStopTemp( (float) readSetting(PS_TempPumpRest));
 	    resetRest();
+		_inverted = (bool) readSetting(PS_PumpActuatorInverted);
 
     #if UsePaddleInsteadOfPump
         setCycle((unsigned long) readSetting(PS_PumpCycle) *1000,(unsigned long) readSetting(PS_PumpRest) *1000);
@@ -1465,8 +1488,9 @@ PumpControl pump;
 // *************************
 //*  heating related function
 // *************************
+bool _hopStanding;
 
-boolean _physicalHeattingOn;
+bool _physicalHeattingOn;
 byte _heatWindowSize;
 unsigned long _windowStartTime;
 
@@ -1939,6 +1963,12 @@ void heatOn(bool pidmode=true)
 	#else
 	heatPhysicalOff();
 	#endif
+	_hopStanding=false;
+}
+
+void hsHeatOn(void){
+	heatOn();
+	_hopStanding=true;	
 }
 
 void heatProgramOff(void)
@@ -2039,7 +2069,14 @@ void heaterControl(void)
 		//DebugPort.println(pidOutput);
 	} else
 #endif
-	if (pidInput >= pidSetpoint && pidInput >= gBoilStageTemperature)
+	// the logic assumes always "heating", which is not true in hopstand
+	// say, current temperature is 99, setpoint is 80, boil temp is 95
+	// the PWM mode is always running.
+	//if (pidInput >= pidSetpoint && pidInput >= gBoilStageTemperature)
+	//	pidOutput = gBoilHeatOutput * 255.0 / 100.0;
+
+	if(! _hopStanding &&
+		(pidInput >= pidSetpoint && pidInput >= gBoilStageTemperature))
 		pidOutput = gBoilHeatOutput * 255.0 / 100.0;
 
   	if(gIsHeatProgramOff) pidOutput=0;
@@ -2095,10 +2132,10 @@ void heatThread(void)
 #if MaximumNumberOfSensors > 1
 	if(_physicalHeattingOn){
 		for(byte i=0;i<gSensorNumber;i++)
-			gTemperatureReading[i] += (gCurrentTimeInMS - lastTime) * (0.00000002 + i*0.000000001);
+			gTemperatureReading[i] += (gCurrentTimeInMS - lastTime) * (0.0004 + i*0.0001);
 	}else{
 		for(byte i=0;i<gSensorNumber;i++)
-			gTemperatureReading[i] -= (gCurrentTimeInMS - lastTime) * (0.000000002+ i*0.0000000007);
+			gTemperatureReading[i] -= (gCurrentTimeInMS - lastTime) * (0.000025+ i*0.0007);
 	}
 	gCurrentTemperature = gTemperatureReading[gPrimarySensorIndex];
 	gAuxTemperature = gTemperatureReading[gAuxSensorIndex];
@@ -3264,7 +3301,8 @@ const SettingItem miscSettingItems[] PROGMEM=
 /*1*/{STR(Button_Buzz), &displayYesNo, PS_ButtonFeedback,1,0},
 /*2*/{STR(PumpPrime), &displaySimpleInteger, PS_PumpPrimeCount,10,0},
 /*3*/{STR(PrimeOn), &displayMultiply250, PS_PumpPrimeOnTime,40,1},
-/*4*/{STR(PrimeOff), &displayMultiply250, PS_PumpPrimeOffTime,40,0}
+/*4*/{STR(PrimeOff), &displayMultiply250, PS_PumpPrimeOffTime,40,0},
+	 {STR(Pump_Inverse),&displayYesNo, PS_PumpActuatorInverted,1,0}
 #if SpargeHeaterSupport == true
 /*5*/,{STR(Sparge_Heater),&displayYesNo,PS_SpargeWaterEnableAddress,1,0,}
 #if MaximumNumberOfSensors >1
@@ -5279,7 +5317,7 @@ void autoModeStartHopStandHopTimer(void)
 
 void autoModeEnterHopStand(uint32_t elapsed=0)
 {
-    heatOn();
+    hsHeatOn();
     pump.off();
     //set temperature as "start" temperature.
     float temp=automation.sessionKeepTemperature(_hopStandSession);
@@ -5376,7 +5414,7 @@ void autoModeStartHopStand(void)
 {
 	uiClearSubTitleRow();
 	uiClearPrompt();
-
+	
     _hopStandSession=0;
     _hopStandSessionHopIndex=0;
     // in case of knock off, (stating temp == boil temp, or current temperature)
