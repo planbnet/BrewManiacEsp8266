@@ -142,7 +142,11 @@ DefineButtonLabel( Up_Down_Heat_Pmp,  "UP* *DWN Heat Pmp",17);
 
 DefineButtonLabel( Up_Down_Pause_STP, "UP* *DWN Pause STP",18);
 
+#if UsePaddleInsteadOfPump
+DefineButtonLabel( Up_Down_PmPus_STP, "UP* *DWN Stir Stop",19);
+#else
 DefineButtonLabel( Up_Down_PmPus_STP, "UP* *DWN PmPus STP",19);
+#endif
 
 DefineButtonLabel( Up_Down_Pause_x,   "UP* *DWN Pause ---",20);
 DefineButtonLabel( Up_Down_Skip_Ok,   "UP* *DWN Skip   Ok",21);

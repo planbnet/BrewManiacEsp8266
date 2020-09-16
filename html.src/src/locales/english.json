@@ -322,7 +322,7 @@
     "new_user_name": "New User Name",
     "new_password": "New Password",
     "retype_new_password": "Retype New Password",
-    "new_password_dont_match": "New Passwords don't mathch!!",
+    "new_password_dont_match": "New Passwords don't match!!",
     "user_name": "User Name",
     "password": "Password",
     "new_setting_will_be_effective": "New setting will be effective after restart.",
