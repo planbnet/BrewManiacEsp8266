@@ -164,7 +164,7 @@
 #define SYSTEM_UPDATE_PATH "/systemupdate"
 #define Default_USERNAME "brewmaniac"
 #define Default_PASSWORD "rdwhahb!"
-#define Default_HOSTNAME "bm"
+#define Default_HOSTNAME "brewbox"
 
 /**************************************************************************************/
 /*  Some other Configuration:  														  */
