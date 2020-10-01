@@ -68,9 +68,13 @@ bool CAutomation::load(void)
 		return false;
 	}
 
+    byte step = 0;
 	for(byte i=0;i<MAXIMUM_STAGE_NUMBER;i++){
-		_stageTimes[i]=root["rest_tm"][i];
-		_stageTemperatures[i]=root["rest_tp"][i];
+		if (root["rest_tm"][i] > 0) {
+			_stageTimes[step]=root["rest_tm"][i];
+			_stageTemperatures[step]=root["rest_tp"][i];
+			step++;
+		}
 	}
 	_stageTimes[0]=1;
 
