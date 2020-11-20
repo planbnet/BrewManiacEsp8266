@@ -2043,7 +2043,7 @@ void heaterControl(void)
 		else
   	 #endif
   		{
-			if (pidSetpoint > pidInput) 
+			if (pidSetpoint < pidInput) 
 			{
 				pidOutput = 0; // Never turn heater on if too hot!
 			}
