@@ -9,3 +9,4 @@ html/build
 html/node_modules
 html/package-lock.json
 html/dist
+.vscode
