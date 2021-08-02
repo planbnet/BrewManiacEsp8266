@@ -858,7 +858,7 @@ public:
     	 		String pathWithGz = path + String(".gz");
 				DBG_PRINTF("checking file:%s, gz:%s\n",path.c_str(),pathWithGz.c_str());
   	    		if(FileSystem.exists(pathWithGz)){
-			    	// AsyncFileResonse will add "content-disposion" header, result in "download" of Safari, instead of "render"
+			    	// AsyncFileResonse will add "content-disposion" header, result in "download" of Safari, instead of "render" 
 	 	    	  	// response = request->beginResponse(FileSystem, pathWithGz,"application/x-gzip");
 			      	// response->addHeader("Content-Encoding", "gzip");
 				  	File file=FileSystem.open(pathWithGz,"r");
@@ -980,7 +980,7 @@ void getSystemInfo(String& json){
 
 	for(int i=0;i<WL_MAC_ADDR_LENGTH;i++){
 
-		json += String(toHex(mac[i] >>4)) + String(toHex(mac[i] & 0x0F));
+		json += String(toHex(mac[i] >>4)) + String(toHex(mac[i] & 0x0F)); 
 	}
 	json +="\"}";
 }
@@ -991,7 +991,7 @@ void getVersionInfo(String& json)
 	json += String("{\"firmware\":{\"v\":\"") + String(BME8266_VERSION);
 	json += String("\",\"sensors\":") + String(MaximumNumberOfSensors);
 	#if SupportDistilling
-	json += String(",\"distill\":1");
+	json += String(",\"distill\":1");	
 	#endif
 	#if UsePaddleInsteadOfPump
 	json += String(",\"paddle\":1");
@@ -1030,7 +1030,7 @@ void greeting(std::function<void(const String&,const char*)> sendFunc){
     sendFunc(String(buf),"timesync");
 	String status;
 	bmWeb.getCurrentStatus(status,true);
-	sendFunc(status,NULL);
+	sendFunc(status,NULL);	
 }
 
 #if UseWebSocket == true
@@ -1069,7 +1069,7 @@ void processRemoteCommand(AsyncWebSocketClient * client, uint8_t *data, size_t l
 		buf[i]=data[i];
 	}
 	buf[i]='\0';
-
+	
 	DBG_PRINTF("processRemoteCommand:\"%s\"\n",buf);
 
 #if ARDUINOJSON_VERSION_MAJOR == 6
@@ -1150,7 +1150,7 @@ AsyncWebSocketClient * _lastWsClient=NULL;
 void wsHello()
 {
 	if(!_lastWsClient) return;
-
+	
 	wsMessageOnConnect(_lastWsClient);
 
 	_lastWsClient=NULL;
@@ -1165,7 +1165,7 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
 		client->ping();
 #if ESPAsyncTCP_issue77_Workaround
 		_lastWsClient=client;
-#else
+#else		
 		wsMessageOnConnect(client);
 #endif
   	} else if(type == WS_EVT_DISCONNECT){
@@ -1443,6 +1443,7 @@ void displayIP(bool apmode){
 		bmWeb.setIp(ip.bytes);
 	}
 }
+
 
 /**************************************************************************************/
 /* Main procedure */

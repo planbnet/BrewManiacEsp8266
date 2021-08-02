@@ -19,8 +19,8 @@ extern FS& FileSystem;
 
 const char DefaultAutomation[] PROGMEM =
 R"END(
-{"rest_tp":[55,65,0,0,0,0,0,76],
-"rest_tm":[1,60,0,0,0,0,0,10],
+{"rest_tp":[57,55,63,65,70,72, 0,75,78],
+"rest_tm": [ 1, 4, 2,50, 2,10, 0, 2, 8],
 "boil":60,
 "hops":[60]
 }
@@ -68,9 +68,13 @@ bool CAutomation::load(void)
 		return false;
 	}
 
+    byte step = 0;
 	for(byte i=0;i<MAXIMUM_STAGE_NUMBER;i++){
-		_stageTimes[i]=root["rest_tm"][i];
-		_stageTemperatures[i]=root["rest_tp"][i];
+		if (root["rest_tm"][i] > 0) {
+			_stageTimes[step]=root["rest_tm"][i];
+			_stageTemperatures[step]=root["rest_tp"][i];
+			step++;
+		}
 	}
 	_stageTimes[0]=1;
 
