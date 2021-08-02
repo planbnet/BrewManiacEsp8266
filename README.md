@@ -1,3 +1,8 @@
+# About this fork
+
+This is basically the original software from https://github.com/vitotai/BrewManiacEsp8266 with adjustments for my hardware
+
+
 # BrewManiacEx
 ![BrewManiacEx Architecture](./docs/bmex_arch.jpg)
 
