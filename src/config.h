@@ -58,7 +58,7 @@
 #define SpargeHeaterSupport false
 #endif
 
-#define LCD_USE_SSD1306 true
+//#define LCD_USE_SSD1306 true
 
 #if SupportDistilling
 #define PwmHeatingSupport true
@@ -198,7 +198,7 @@
 /*  version information     														  */
 /**************************************************************************************/
 
-#define BME8266_VERSION "0.5"
+#define BME8266_VERSION "0.5.1"
 
 #if MaximumNumberOfSensors >  1
 	#if LCD_USE_SSD1306 == true

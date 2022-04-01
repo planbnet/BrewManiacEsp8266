@@ -1162,7 +1162,7 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
 {
 	if(type == WS_EVT_CONNECT){
     	DBG_PRINTF("ws[%s][%u] connect\n", server->url(), client->id());
-		client->ping();
+		// this would cause ping-pong effect on ESP32 client->ping();
 #if ESPAsyncTCP_issue77_Workaround
 		_lastWsClient=client;
 #else		
@@ -1180,8 +1180,7 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
     	if(info->final && info->index == 0 && info->len == len){
       		//the whole message is in a single frame and we got all of it's data
       		DBG_PRINTF("ws[%s][%u] %s-message[%llu]\n", server->url(), client->id(), (info->opcode == WS_TEXT)?"text":"binary", info->len);
-			
-			processRemoteCommand(client,data,info->len);
+			if(info->opcode ==WS_TEXT && info->len>0) processRemoteCommand(client,data,info->len);
 
 		} else {
       		//message is comprised of multiple frames or the frame is split into multiple packets
