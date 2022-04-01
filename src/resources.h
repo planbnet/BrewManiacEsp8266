@@ -18,7 +18,7 @@
 #define DefineButtonLabel(N,S,v) const byte BtnLabelId_##N=v; const char BtnLabel_##N[] PROGMEM = S
 #define ButtonLabel(N) BtnLabelId_##N,BtnLabel_##N
 
-#define _makeVERSION_INFORMATION(a) "BrewManiacEx " a 
+#define _makeVERSION_INFORMATION(a) "BrewBunny Box " a 
 #define _makeVERSION_indirect(v) _makeVERSION_INFORMATION(v)
 #define VERSION_INFORMATION  _makeVERSION_indirect(BME8266_VERSION)
 
