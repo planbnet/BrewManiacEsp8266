@@ -18,7 +18,7 @@
 #define DefineButtonLabel(N,S,v) const byte BtnLabelId_##N=v; const char BtnLabel_##N[] PROGMEM = S
 #define ButtonLabel(N) BtnLabelId_##N,BtnLabel_##N
 
-#define _makeVERSION_INFORMATION(a) "BrewManiacEx " a
+#define _makeVERSION_INFORMATION(a) "BrewManiacEx " a 
 #define _makeVERSION_indirect(v) _makeVERSION_INFORMATION(v)
 #define VERSION_INFORMATION  _makeVERSION_indirect(BME8266_VERSION)
 
@@ -142,7 +142,11 @@ DefineButtonLabel( Up_Down_Heat_Pmp,  "UP* *DWN Heat Pmp",17);
 
 DefineButtonLabel( Up_Down_Pause_STP, "UP* *DWN Pause STP",18);
 
+#if UsePaddleInsteadOfPump
+DefineButtonLabel( Up_Down_PmPus_STP, "UP* *DWN Stir Stop",19);
+#else
 DefineButtonLabel( Up_Down_PmPus_STP, "UP* *DWN PmPus STP",19);
+#endif
 
 DefineButtonLabel( Up_Down_Pause_x,   "UP* *DWN Pause ---",20);
 DefineButtonLabel( Up_Down_Skip_Ok,   "UP* *DWN Skip   Ok",21);
