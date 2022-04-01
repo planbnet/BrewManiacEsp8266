@@ -1,2 +1,6 @@
 .pio
 .vscode
+html/package-lock.json
+html/build
+html/node_modules
+html/dist
