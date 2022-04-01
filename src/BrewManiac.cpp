@@ -2053,7 +2053,11 @@ void heaterControl(void)
 		else
   	 #endif
   		{
-    		if (((pidSetpoint - pidInput) < gPidStart ) && ( pidSetpoint < gBoilStageTemperature) ) // Delta < DeltaPID(3.5),
+			if (pidInput > pidSetpoint + 0.2 ) 
+			{
+				pidOutput = 0; // Never turn heater on if too hot! Prevent overshoot
+			}
+			else if (((pidSetpoint - pidInput) < gPidStart ) && ( pidSetpoint < gBoilStageTemperature) ) // Delta < DeltaPID(3.5),
     		{
         		thePID.Compute();   // was 6, getting close, start feeding the PID -mdw
     		}
