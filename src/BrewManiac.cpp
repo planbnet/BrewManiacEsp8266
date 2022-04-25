@@ -57,6 +57,8 @@
 #define DBG_PRINTF(...)
 #endif
 
+
+#define NO_PID_STRIKE true
 //}debug
 // *************************
 //*  global variables
@@ -345,12 +347,7 @@ void setEventMask(byte mask)
 //*  includes, follow Arduino conveniention
 // *************************
 #include "buzz.h"
-#if MenuLanguage == MENU_russian
-#warning "Using Russian locale!"
-#include "resources_ru.h"
-#else
 #include "resources.h"
-#endif
 #include "ui.h"
 
 #include "wi.h"
@@ -4429,7 +4426,11 @@ void autoModeEnterDoughIn(void)
 #if SecondaryHeaterSupport
 	setHeatingElementForStage(HeatingStagePreMash);
 #endif
+	#if NO_PID_STRIKE
+	heatOn(false);
+	#else
 	heatOn();
+	#endif
 	if(gIsUseFahrenheit)
 		setAdjustTemperature(167,77);
 	else
@@ -5544,10 +5545,11 @@ void autoModeResumeProcess(void)
 	else if (stage == StageWhirlpool) // Whirlpool
 	{
     	heatOff();
-    	if(elapsed != INVALID_RECOVERY_TIME)
+    	if(elapsed != INVALID_RECOVERY_TIME){
     	    autoModeWhirlpool(elapsed);
-    	else
+		}else{
     	    autoModeWhirlpool(0);
+		}
 	    _state = AS_Whirlpool;
 	}
 	else if (stage == StageHopStandChill) // HopStandChill
@@ -5864,6 +5866,10 @@ bool autoModeDoughInHandler(byte event)
 {
 	if(event == TemperatureEventMask){
 		if(gCurrentTemperature >=gSettingTemperature){
+			#if NO_PID_STRIKE
+			heatOn(); // switch back to PID mode
+			#endif
+
 			// temp reached. ask continue & malt in
 			_state = AS_MashInAskContinue;
 			_mashingTemperatureReached = true;
