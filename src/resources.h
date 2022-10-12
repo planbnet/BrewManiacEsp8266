@@ -47,6 +47,7 @@ StringConst( Delay_Start,"Delay Start?");
 StringConst( No_Delay_Start,"No Delay Start");
 
 StringConst( Resume_Process,"Resume Process?");
+StringConst( Resume_Failed,"Resume Failed!");
 
 StringConst( In_Pause,"In Pause");
 StringConst( IODINE_TEST,"IODINE  TEST");
@@ -296,6 +297,9 @@ StringConst( Pump_Mashout, "Pmp Mashout");
 StringConst( Pump_On_Boil, "Pmp on Boil");
 StringConst( Pump_Stop, "Pump Stop");
 #endif
+
+StringConst( PID_STRIKE, "PID STRIKE");
+
 StringConst( PID_MaltOut, "PID Malt Out");
 StringConst( Active, "Active");
 StringConst( Passive, "Passive");

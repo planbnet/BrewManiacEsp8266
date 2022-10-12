@@ -58,7 +58,6 @@
 #endif
 
 
-#define NO_PID_STRIKE true
 //}debug
 // *************************
 //*  global variables
@@ -2894,14 +2893,16 @@ const SettingItem unitSettingItems[] PROGMEM={
 /* 7 */{STR(Pump_On_Boil), &displayOnOff,              PS_PumpOnBoil,1,0},
 /* 8 */{STR(Pump_Stop),    &displaySimpleTemperature,  PS_TempPumpRest,105,80},  // celius
 /*  *///{STR(Pump_Stop),    &displaySimpleTemperature,  PS_TempPumpRest,221,176}, // fahrenheit
-/* 9 */{STR(PID_Dough_In), &displayOnOff,              PS_PID_DoughIn,1,0},
-/* 10 */{STR(PID_MaltOut),  &displayOnOff,              PS_PidPipe, 1,0},
-/* 11 */{STR(Skip_Add),     &displayYesNo,              PS_SkipAddMalt,1,0},
-/* 12 */{STR(Skip_Remove),  &displayYesNo,              PS_SkipRemoveMalt,1,0},
-/* 13 */{STR(Skip_Iodine),  &displayYesNo,              PS_SkipIodineTest,1,0},
-/* 14 */{STR(IodineTime),   &displayTimeOff,            PS_IodineTime,90,0},
-/* 15 */{STR(Whirlpool),    &displayHotColdOff,         PS_Whirlpool,2,0},
-/* 16 */{STR(HeatOnPump),    &displayYesNo,         PS_HeatOnPump,1,0}}; 
+/* 9 */{STR(PID_STRIKE), &displayOnOff,              PS_PID_STRIKE,1,0},
+
+/* 10 */{STR(PID_Dough_In), &displayOnOff,              PS_PID_DoughIn,1,0},
+/* 11 */{STR(PID_MaltOut),  &displayOnOff,              PS_PidPipe, 1,0},
+/* 12 */{STR(Skip_Add),     &displayYesNo,              PS_SkipAddMalt,1,0},
+/* 13 */{STR(Skip_Remove),  &displayYesNo,              PS_SkipRemoveMalt,1,0},
+/* 14 */{STR(Skip_Iodine),  &displayYesNo,              PS_SkipIodineTest,1,0},
+/* 15 */{STR(IodineTime),   &displayTimeOff,            PS_IodineTime,90,0},
+/* 16 */{STR(Whirlpool),    &displayHotColdOff,         PS_Whirlpool,2,0},
+/* 17 */{STR(HeatOnPump),    &displayYesNo,         PS_HeatOnPump,1,0}}; 
 
 void settingUnitSetup(void)
 {
@@ -3895,7 +3896,7 @@ byte _state;
 
 #if SupportManualModeCountDown == true
 unsigned long manualModeChangeCountDownTime;
-bool isCountDownTimeBlinking;
+bool isCountDownTimeBlinking=false;
 bool isManualModeCountDownMode;
 #endif
 //
@@ -4426,11 +4427,14 @@ void autoModeEnterDoughIn(void)
 #if SecondaryHeaterSupport
 	setHeatingElementForStage(HeatingStagePreMash);
 #endif
-	#if NO_PID_STRIKE
-	heatOn(false);
+	// PID_STRIKE
+	#if PwmHeatingSupport	
+	heatOn(readSetting(PS_PID_STRIKE)? HeatingModeBoil:HeatingModePID);
 	#else
-	heatOn();
+	heatOn(readSetting(PS_PID_STRIKE) !=0);
 	#endif
+
+
 	if(gIsUseFahrenheit)
 		setAdjustTemperature(167,77);
 	else
@@ -4868,6 +4872,7 @@ void autoModeEnterBoiling(void)
 	setSettingTemperature ( gBoilStageTemperature);
 
 	// display time
+	isCountDownTimeBlinking=false;
 	byte boilTime=automation.boilTime();
 
 	brewLogger.stage(StageBoil);
@@ -4953,9 +4958,8 @@ void autoModeReStartBoilingTimer(void)
 		byte idx=automation.numberOfHops() - _numHopToBeAdded;
 
 		unsigned long nextHopTime=(unsigned long)automation.timeOfHop(idx) * 60 * 1000;
-
-		unsigned long nextHopTimeout=_remainingBoilTime - nextHopTime;
-		if(nextHopTimeout == 0)
+		
+		if(_remainingBoilTime <= nextHopTime)
 		{
 			// alert directly, start timer to restore
 			autoModeAddHopNotice();
@@ -4963,7 +4967,7 @@ void autoModeReStartBoilingTimer(void)
 		else
 		{
 			recoveryTimer = false;
-			tmSetAuxTimeoutAfter(nextHopTimeout);
+			tmSetAuxTimeoutAfter(_remainingBoilTime - nextHopTime);
 		}
 	}
 }
@@ -5471,12 +5475,22 @@ void autoModeResumeProcess(void)
 
 	#if SpargeHeaterSupport == true	
 	bool resume_sparge = false;
-	brewLogger.resumeSession(&stage,&elapsed,&resume_sparge);
+	bool success=brewLogger.resumeSession(&stage,&elapsed,&resume_sparge);
 	#else
-	brewLogger.resumeSession(&stage,&elapsed);
+	bool success=brewLogger.resumeSession(&stage,&elapsed);
 	#endif
 
 	DBG_PRINTF("resume state:%d, elapsed:%d\n",stage, elapsed);
+
+	if(!success){
+		_state = AS_Finished;
+
+		uiClearScreen();
+		uiPrompt(STR(Resume_Failed));
+		buzzPlaySound(SoundIdWarnning);
+		tmSetTimeoutAfter(BREW_END_STAY_DURATION * 1000);
+		return;
+	}
 
 	setEventMask(TemperatureEventMask | ButtonPressedEventMask | TimeoutEventMask | PumpRestEventMask);
 
@@ -5634,7 +5648,7 @@ void autoModeResumeProcess(void)
 
 bool autoModeAskResumeHandler(byte event)
 {
-
+	if(event != ButtonPressedEventMask) return false;
 	if(btnIsStartPressed){
 		// YES
 		autoModeResumeProcess();
@@ -5866,9 +5880,8 @@ bool autoModeDoughInHandler(byte event)
 {
 	if(event == TemperatureEventMask){
 		if(gCurrentTemperature >=gSettingTemperature){
-			#if NO_PID_STRIKE
-			heatOn(); // switch back to PID mode
-			#endif
+			// PID_STRIKE
+			heatOn(); // switch back to PID mode, whatever it was
 
 			// temp reached. ask continue & malt in
 			_state = AS_MashInAskContinue;
@@ -6174,15 +6187,48 @@ bool autoModeAskMaltRemoveHandler(byte event)
 	return false;
 }
 
+void autoModeBoilingTimeChange(int change){
+	int bt =(int) automation.boilTime();
+	bt +=  change;
+	if(bt < 0) bt=0;
+	if(bt > 240) bt=240;
+	automation.setBoilTime(bt);
+	uiRunningTimeShowInitial(bt * 60);
+}
+
 bool autoModeBoilingHandler(byte event)
 {
 	if(event ==ButtonPressedEventMask){
+		if(isCountDownTimeBlinking){
+			if(btnIsUpPressed){
+				autoModeBoilingTimeChange(1);
+			}else if(btnIsUpContinuousPressed){
+				autoModeBoilingTimeChange(5);
+			}else if(btnIsDownPressed){
+				autoModeBoilingTimeChange(-1);
+			}else if(btnIsDownContinuousPressed){
+				autoModeBoilingTimeChange(-5);
+			}else{
+				// other button actions are considered as ending of time editing
+				isCountDownTimeBlinking=false;
+				uiRunningTimeBlink(false);
+				wiRecipeChange();
+			}
+			return true;
+		}
+		//else
 		if (btnIsEnterPressed){
 			// pump control
 			pump.toggle();
 		}else if(btnIsStartPressed){
 			if(_isBoilTempReached){
 				autoModeBoilingPauseHandler();
+			}
+		}else if(isExactButtonsPressed(ButtonEnterMask | ButtonStartMask)){
+			if(!_isBoilTempReached){
+				// to change boiling time
+				isCountDownTimeBlinking = true;
+				uiRunningTimeBlink(isCountDownTimeBlinking);
 			}
 		}else{
 			processAdjustButtons();
@@ -6224,6 +6270,12 @@ bool autoModeBoilingHandler(byte event)
 				brewLogger.event(RemoteEventTemperatureReached);
 				_isBoilTempReached=true;
 
+				// forced stop time editing
+				if(isCountDownTimeBlinking){
+					isCountDownTimeBlinking = false;
+					uiRunningTimeBlink(isCountDownTimeBlinking);
+					wiRecipeChange();
+				}
 				//buzz temperature reach first
 				// because later "add hop" buzz may interrupt
 				// it
